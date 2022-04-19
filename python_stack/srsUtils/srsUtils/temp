@@ -1,0 +1,38 @@
+def taylorTerm2D(expr,x,y,n,m):
+	'''
+	Gives the n,mth order coefficient of a bivariate function's Taylor series
+
+	Expands about (x,y) = (0,0). To expand about a different point, simply
+	shift the independent variable by the relevant amount.
+	'''
+	return expr.taylor_term(n,x).taylor_term(m,y)
+
+def dispRelSymbolic():
+	'''
+	Returns symbolic form of the SRS dispersion function
+
+	Written in terms of an arbitrary electron dispersion function:
+	D(ω,k) = 1 + Χ_e(ω,k)
+	'''
+	o0,k0,o,k,O0,a0,bth = sp.symbols("o0 k0 o k oL a0 bth")
+	D = sp.symbols('D',cls=sp.Function)
+
+	K0 = sp.sqrt(O0**2 - 1)*bth
+	DNeg = (o-O0)**2 - 1 - ((k-K0)/bth)**2
+	DPos = (o+O0)**2 - 1 - ((k+K0)/bth)**2
+
+	dr = D(o,k)*DNeg*DPos + (k*a0/bth/2)**2*(D(o,k)-1)*(DPos+DNeg)
+
+	return (o0,k0,o,k,O0,a0,bth,D),dr
+
+def dispRelTaylorTerm(oOrder,kOrder):
+	symbols,dr = dispRelSymbolic()
+	o0,k0,o,k,O0,a0,bth,D = symbols
+
+	do,dk = sp.symbols('do dk')
+
+	dr = dr.subs(k,dk+k0).subs(o,do+o0)
+	t = taylorTerm2D(dr,do,dk,oOrder,kOrder)
+	t = t.subs(dk,k-k0).subs(do,o-o0)
+
+	return symbols,t
