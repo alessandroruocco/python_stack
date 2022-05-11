@@ -7,11 +7,7 @@ Requirements
 ------------
 
  - Python3
- - EPOCH*
-
-* This should be from a branch with Heather's 'output accumulators'. Talk to
-  Tony/SJ about this.
-
+ - EPOCH
 Installation
 ------------
 
@@ -50,6 +46,18 @@ pip install -e ./sdfUtils
 pip install -e ./srsUtils
 pip install -e ./pbsUtils
 pip install -e ./pyEPOCH
+
+************* From this on, it is outdated ********
+
+
+
+
+
+
+
+
+
+
 
 (If I want to fix a certain interval, --Intervallo 'True' --IntervalInitial .... --IntervalFinal
 
