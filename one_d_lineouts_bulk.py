@@ -17,6 +17,8 @@ import sdf
 from scipy import fftpack
 from numpy.fft import fft,fftfreq,ifft,fftshift
 from matplotlib import ticker, cm
+import pyfftw
+
 
 import srsUtils
 import sdfUtils
@@ -24,6 +26,10 @@ import sdfUtils
 axis_font = {'fontname':'Arial', 'size':'30'}
 title_font = {'fontname':'Arial', 'size':'25', 'color':'black', 'weight':'normal',
               'verticalalignment':'bottom'} # Bottom vertical alignment for more space
+
+_nProc = mp.cpu_count()
+
+
 
 
 def smooth(y, box_pts):
@@ -35,7 +41,7 @@ def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx], idx
 
-mpl.style.use('classic')
+
 plt.rc('text', usetex=False)
 plt.rc('font', family='serif')
 plt.rc('figure', autolayout=True)
@@ -53,10 +59,10 @@ density_tick_sei = 0.02
 convert_k_to_kev = 1/11604*10**-3
 
 
-def calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,Legend,
+def calculate_y_lineout_field(k0,x_of_y_lineouts,index_x_of_y_lineouts,Legend,
                               type_of_field,files, IntervalInitial,
                                   IntervalFinal, Snapshots,y,Cropy,index_ycropping_1,index_ycropping_2,
-                                  LaserIntensity,Te,logscale,type_of_profile,plotType,
+                                  LaserIntensity,Te,logscale,yLims,kyLims,type_of_profile,plotType,
                                   cumulate_plots,cumulate_plot_number):
     
 
@@ -71,6 +77,9 @@ def calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,Legend,
 
     
     cumulate_plot_count = 0
+    y_field_in_time = 0
+    time_for_color_plot = []
+    field_for_color_plot = []
     
     if IntervalInitial is None and IntervalFinal is None:
         
@@ -86,51 +95,68 @@ def calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,Legend,
     
             energy = data_file.__dict__[type_of_field].data
             
-            print('lineout field')
             
             if Cropy is None:
                 energy = energy[index_x_of_y_lineouts,index_ycropping_1:len(energy[1,:])-index_ycropping_2]
             elif Cropy is not None:
                 energy = energy[index_x_of_y_lineouts,index_ycropping_1:index_ycropping_2]
 
-     
-            
-            
             if type_of_field.startswith('Derived_Poynting_Flux_x'):
                   l_intensity = LaserIntensity*1e4
                   norm   = l_intensity
-                  plt.ylabel('$S_x$ ($I_0$)')
+                  label_plot = '$S_x$ ($I_0$)'
+
                   energy = np.abs(energy)
+                  colore_plot = cm.seismic
                   data_save_folder = 'sx'
     
             elif type_of_field.startswith('Derived_Poynting_Flux_y'):
                   l_intensity = LaserIntensity*1e4
                   norm   = l_intensity
-                  plt.ylabel('$S_y$ ($I_0$)')
+                  label_plot = '$S_y$ ($I_0$)'
+
+                  colore_plot = 'PuBuGn'
                   data_save_folder = 'sy'
+                  
+            elif type_of_field.startswith('Derived_Poynting_Flux_z'):
+                  l_intensity = LaserIntensity*1e4
+                  norm   = l_intensity
+                  label_plot = '$S_z$ ($I_0$)'
+
+                  colore_plot = 'PuBuGn'
+                  data_save_folder = 'sz'
     
             elif type_of_field.startswith('Derived_Temperature_Electron'):
                   norm    = convert_k_to_kev*Te
                   plt.ylabel('$T$ ($T_{e0}$)')
+                  label_plot = '$T_e$'
+
+                  colore_plot = 'PuBuGn'
                   data_save_folder = 'e_temp'
     
             elif type_of_field.startswith('Electric_Field_Ex') :
                   # energy = smooth(energy**2,int(len(x)/100))**2
                   norm = (const.m_e*srsUtils.omegaNIF*const.c/const.e)**2
-                  plt.ylabel('$e |E_x|^2/(m_e \omega_0|$)')
+                  label_plot = '$e |E_x|^2/(m_e \omega_0|$'
+
+                  colore_plot = 'Greens'
                   data_save_folder = 'ex'
     
             elif type_of_field.startswith('Electric_Field_Ey') :
                   # energy = smooth(energy**2,int(len(x)/100))**2
                   print('Sta entrnato qua')
                   norm = (const.m_e*srsUtils.omegaNIF*const.c/const.e)**2
-                  plt.ylabel('$e |E_y|^2/(m_e \omega_0|$)')
+                  label_plot = '$e |E_y|^2/(m_e \omega_0|$'
+                  colore_plot = 'cyan'
                   data_save_folder = 'ey'
     
                    # variable    = np.abs(np.array(variable))
             elif type_of_field.startswith('Derived_Number_Density_Electron'):
                   norm    = critical_density_m
-                  plt.ylabel('$n_e$')
+                  colore_plot = 'wheat'
+                  label_plot = '$n_e/n_0$'
+
+                  colore_plot = 'goldenrod'
                   data_save_folder = 'e_density'
     
     
@@ -139,34 +165,35 @@ def calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,Legend,
     
                   norm    = critical_density_m
                   data_save_folder = 'i_density'
-                  plt.ylabel('$n_i$')
-                 
-            if args.plotType == 'normal':
+                  colore_plot = 'salmon'
+                  label_plot = '$n_c/n_0$'
+                  
+            print(plotType)
+            
+            time_for_color_plot.append(time)
+            
+            if plotType == 'YSnapshots':
+                y_field_in_time = energy/norm + y_field_in_time
+                
+                
                 plt.figure()
+                plt.ylabel(label_plot)
+
                 plt.xlabel('y ($\mu$m)')
                 plt.xlim(y.min(),y.max())
                 plt.grid()    
                 if logscale == True:
                     plt.yscale('log')
 
-
-    
-           
-
             #  if Legend == True:
                 plt.title('t='+str(round(time,3))+' ps')
-
+                
+                
                 plt.plot(y,energy/norm,label ='t='+str(round(time,3)) )
+                field_for_color_plot.append(energy/norm)
     
-
-
-           
-
-
                 cumulate_plot_count = cumulate_plot_count +1
-
-  
-       
+      
                 plt.savefig('./pics/'+str(data_save_folder)+'_y_lineout/'+str(args.output)+str(round(time,3))+'.jpg')
     
 
@@ -186,11 +213,139 @@ def calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,Legend,
                         plt.legend(loc='best',prop={'size':18})
                         plt.savefig('./pics/'+str(data_save_folder)+'_y_lineout/'+str(args.output)+str(round(time,3))+'_cumulative_plot.jpg',dpi=600,pad='tight')
                 plt.close()
+                
+            if plotType == 'FTySnapshots':
+                
+                # field,xPlot,_ = processField(data,x,y,fieldName)
+                # yCC = 0.5*(y[1:] + y[:-1])
+                # fieldFTy,ywns = calcFTy(field,yCC,windowFunc)
+
+                # wnNorm = srsUtils.omegaNIF/const.c
+                # ywnsPlot = ywns/wnNorm
+                
+                
+                dy = y[1]-y[0]
+                Ny = y.shape[0]
+                
+       
+
+                window = np.hanning(Ny)
+         
+            
+                # Keep amplitude of modes with k parallel to y the same, modes with k
+                # parallel to x will have twice the amplitude...
+                # Attempt to normalise so that amplitudes are correct.
+                # Probably doesn't work completely but as good as it's going to get.
+                ampCoeff = 2./(Ny*np.mean(window))
+            
+                FTy = ampCoeff*np.abs(pyfftw.interfaces.numpy_fft.fft(window*energy,axis=0,threads=_nProc))
+                FTy = np.fft.fftshift(FTy,axes=0)
+            
+                ky = 2*math.pi*np.fft.fftshift(np.fft.fftfreq(Ny,dy))
+                #Prepare the frequencies
+                
+                ky = ky/k0
+                field_for_color_plot.append(FTy)
+
+                
+                plt.figure()
+                plt.xlabel('ky ($k_0$)')
+                # plt.xlim(ky.min(),ky.max())
+                if kyLims is not None:
+                    plt.xlim(kyLims)
+                else:
+                    plt.xlim(-10,10)
+                plt.grid()    
+                if logscale == True:
+                    plt.yscale('log')
+
+            #  if Legend == True:
+                plt.title('t='+str(round(time,3))+' ps')
+
+                plt.plot(ky,np.abs(FTy)**2,label ='t='+str(round(time,3)) )
     
+                cumulate_plot_count = cumulate_plot_count +1
+      
+                plt.savefig('./pics/'+str(data_save_folder)+'_ky_lineout/'+str(args.output)+str(round(time,3))+'fs_'+str(int(x_of_y_lineouts))+'um.jpg')
     
+            
+
+  
+                print('-------------------------------------')
+                print('-------------------------------------')
+                
+
+
+        if plotType == 'YSnapshots':
+        
+            plt.figure('time_averaged')
+            plt.xlabel('y ($\mu$m)')
+            plt.xlim(y.min(),y.max())
+            plt.grid()    
+            if logscale == True:
+                plt.yscale('log')
+        
+        #  if Legend == True:
+            plt.title('t='+str(round(time,3))+' ps')
+        
+            plt.plot(y,y_field_in_time,label ='t='+str(round(time,3)) )
+        
+          
+            plt.savefig('./pics/'+str(args.output)+str(int(x_of_y_lineouts))+'_time_averaged.jpg')
+            plt.close('all')
+            
+        if plotType == 'FTySnapshots':
+            
+            fig = plt.figure()
+            ax = plt.subplot(111)
     
-            print('-------------------------------------')
-            print('-------------------------------------')
+            if not maxF:
+                maxF = np.percentile(energy,maxFPercentile)
+            if not minF:
+                if Log==True:
+                    minF = np.percentile(energy,minFPercentile)
+                else:
+                    minF = 0.0
+            if Log==False:
+                norm = colors.Normalize(vmin=minF,vmax=maxF)
+            else:
+                
+                norm = colors.LogNorm(vmin=minF,vmax=maxF)
+            
+            field_for_color_plot = np.array(field_for_color_plot)
+            time = np.array(time)
+            extent = srsUtils.misc.getExtent(time,ky)
+            energy_plot = skimage.measure.block_reduce(field_for_color_plot,reduceArray,np.mean)
+            energy_plot = energy_plot.T
+        
+            im = ax.imshow(energy_plot/energy_plot.max(),interpolation='none',origin='lower',aspect='auto',extent=extent,cmap=colore_plot,norm=norm)
+            
+            if CBar:
+                cb = fig.colorbar(im,ax=ax,orientation='vertical')
+            if Log==False:
+                cb.formatter.set_powerlimits((-4,4))
+            cb.ax.yaxis.set_offset_position('left')
+            cb.ax.tick_params(labelsize=20)
+            
+            cb.ax.set_ylabel(label_plot, rotation=90,labelpad=10,**axis_font)
+
+            cb.update_ticks()
+
+            ax.tick_params(reset=True,axis='both',color='w',direction='in')
+            
+     
+            if kyLims:
+                plt.ylim(kyLims)
+
+        
+          
+            plt.savefig('./pics/'+str(args.output)+str(int(x_of_y_lineouts))+'_ky_t.jpg')
+            plt.close('all')
+
+    
+
+
+           
 
 
 
@@ -238,7 +393,8 @@ if __name__ == '__main__':
     parser.add_argument('--xLims',type=float,nargs=2)
     parser.add_argument('--kLims',type=float,nargs=2,default=[-3,3])
     parser.add_argument('--dens_lim',type=float,nargs=2)
-    parser.add_argument('--yLims',type=float,nargs=2)
+    parser.add_argument('--yLims',type=float,nargs=2,default = None)
+    parser.add_argument('--kyLims',type=float,nargs=2,default = None)
     parser.add_argument('--maxFPercentile',type=float,default=99.9)
     parser.add_argument('--minFPercentile',type=float,default=0.5)
     parser.add_argument('--maxF',type=float)
@@ -305,15 +461,15 @@ if __name__ == '__main__':
     parser.add_argument('--xPositionLineout',type=float)
     
     parser.add_argument('--plotType',
-                        choices=['normal','env','FT','FTy','wltx','meanDiffY'],
-                                            default='normal')
+                        choices=['Ysnapshots','YTimeAveraged','FTySnapshots','FTyTimeAveraged','meanDiffY'],
+                                            default='YSnapshots')
 
 
     args = parser.parse_args()
     
     critical_density_m = 1.1 * 1e21 * (args.Lambda)**-2 * 1e6
+    k0_um = 2*3.14/args.Lambda
 
-    print(critical_density_m)
     print(args.dataDir,'arg data')
     
     DSnapshots = args.DSnapshots
@@ -323,7 +479,6 @@ if __name__ == '__main__':
     if args.ChooseInterval == True:
         files = sdfUtils.listFiles(args.dataDir,args.prefix)[args.IntervalInitial:args.IntervalFinal]
     else:
-        print('entra qua')
         print(args.dataDir,args.prefix)
         files = sdfUtils.listFiles(args.dataDir,args.prefix)[::args.Snapshots]
 
@@ -373,13 +528,14 @@ if __name__ == '__main__':
     
     print(yOrig.min())
     print('le',len(yOrig))
+    
     if args.yLineout == True and args.xPositionLineout is not None:
         
-        calculate_y_lineout_field(x_of_y_lineouts,index_x_of_y_lineouts,args.Legend,type_of_field,files,
+        calculate_y_lineout_field(k0_um,x_of_y_lineouts,index_x_of_y_lineouts,args.Legend,
+                                  type_of_field,files,
                                           args.IntervalInitial,args.IntervalFinal,
                                           args.Snapshots,yOrig,args.Cropy,index_ycropping_1,index_ycropping_2,
-                                          args.LaserIntensity,args.plotType,                                          
+                                          args.LaserIntensity,                                         
                                          args.Te,args.logscale,
-                                      args.type_of_profile,args.cumulate_plots,args.cumulate_plot_number)
-        
-  
+                                         args.yLims,args.kyLims,
+                                      args.type_of_profile,args.plotType, args.cumulate_plots,args.cumulate_plot_number)
