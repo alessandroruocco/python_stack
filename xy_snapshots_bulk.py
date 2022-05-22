@@ -244,13 +244,31 @@ def x_y_temporal_cut(directory_output,Lambda,RatioPFlux,files,type_of_field,smoo
                 energy = energy/enorm
                 quantity_title = '$Sz/I_0$'
 
-            elif type_of_field.endswith('Field_Ex') or type_of_field.endswith('Field_Ez') or type_of_field.endswith('Field_Ey'):
+            elif type_of_field.endswith('Field_Ex'):
                 enorm = (const.m_e*srsUtils.omegaNIF*const.c/const.e)**2
                 #energy = skimage.measure.block_reduce(energy,reduceArray,np.mean)
                # energy = np.abs(energy/enorm)**2
                 energy = energy
                 quantity_title = '$e |E_x|/( cm_e \omega_0)$'
                 print(energy.max(),energy.min())
+
+            elif type_of_field.endswith('Field_Ey'):
+                enorm = (const.m_e*srsUtils.omegaNIF*const.c/const.e)**2
+                #energy = skimage.measure.block_reduce(energy,reduceArray,np.mean)
+               # energy = np.abs(energy/enorm)**2
+                energy = energy
+                quantity_title = '$e |E_y|/( cm_e \omega_0)$'
+                print(energy.max(),energy.min())
+
+            elif type_of_field.endswith('Field_Ez'):
+
+                enorm = (const.m_e*srsUtils.omegaNIF*const.c/const.e)**2
+                #energy = skimage.measure.block_reduce(energy,reduceArray,np.mean)
+               # energy = np.abs(energy/enorm)**2
+                energy = energy
+                quantity_title = '$e |E_z|/( cm_e \omega_0)$'
+                print(energy.max(),energy.min())
+
 
 
             elif type_of_field.endswith('Temperature_Electron'):
@@ -364,6 +382,9 @@ def x_y_temporal_cut(directory_output,Lambda,RatioPFlux,files,type_of_field,smoo
 
         ax.tick_params(reset=True,axis='both',color='w',direction='in')
         print(noMarkQC)
+        # Annotate location of important densities
+#        if ne is not None:
+#            if noMarkQC == False:
 
         density_plot_twin = n_min*np.exp(x/l_nc4)
 
@@ -372,6 +393,9 @@ def x_y_temporal_cut(directory_output,Lambda,RatioPFlux,files,type_of_field,smoo
             x02,index_x02 = find_nearest(density_plot_twin,density_mark_2)
         if density_mark_3 is not None:
             x015,index_x015 = find_nearest(density_plot_twin,density_mark_3)
+     #   x01,index_x01 = find_nearest(density_plot_twin,density_tick_quattro)
+    #    x005,index_x005 = find_nearest(density_plot_twin,density_tick_cinque)
+
 
         if xQC is not None: ax.axvline(x[index_xqc],color='green',linestyle='--',linewidth = 6)
         if density_mark_2 is not None:
@@ -379,6 +403,8 @@ def x_y_temporal_cut(directory_output,Lambda,RatioPFlux,files,type_of_field,smoo
 
         if density_mark_3 is not None:
             if x015 is not None: ax.axvline(x[index_x015],color='darkgray',linestyle=':',linewidth = 4)
+#        if x01 is not None: ax.axvline(x[index_x01],color='lightgray',linestyle=':',linewidth = 4)
+#        if x005 is not None: ax.axvline(x[index_x005],color='w',linestyle=':',linewidth = 4)
 
         
 
