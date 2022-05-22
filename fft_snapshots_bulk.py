@@ -290,7 +290,7 @@ def plotGridData(fig,ax,data,dataName,x,y,t,symmetric,cmap,xLabel,yLabel,zLabel,
 
         quantity_title = '$e |E_y|^2/( cm_e \omega_0)$'
         
-    elif args.dataName.endswith('Field_Ey'):
+    elif args.dataName.endswith('Field_Ez'):
 
         quantity_title = '$e |E_z|^2/( cm_e \omega_0)$'
     
