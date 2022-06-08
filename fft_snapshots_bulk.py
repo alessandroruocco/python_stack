@@ -133,9 +133,14 @@ def calcFT(data,x,y,windowFunc):
         xWindow = windowFunc(Nx)
         yWindow = windowFunc(Ny)
         window = np.outer(xWindow,yWindow)
+        print('xWindow',len(xWindow),'yWindow',len(yWindow),len(data))
     else:
+        print('esle windoqw')
         xWindow = yWindow = 1.0
 
+    xWindow = windowFunc(len(x))
+    yWindow = windowFunc(len(y))
+    window = np.outer(xWindow,yWindow)
     # Attempt to normalise so that amplitudes are correct.
     # Probably doesn't work completely but as good as it's going to get.
     ampCoeff = 2./(Nx*np.mean(xWindow)*Ny*np.mean(yWindow))
@@ -290,7 +295,7 @@ def plotGridData(fig,ax,data,dataName,x,y,t,symmetric,cmap,xLabel,yLabel,zLabel,
 
         quantity_title = '$e |E_y|^2/( cm_e \omega_0)$'
         
-    elif args.dataName.endswith('Field_Ez'):
+    elif args.dataName.endswith('Field_Ey'):
 
         quantity_title = '$e |E_z|^2/( cm_e \omega_0)$'
     
@@ -310,7 +315,7 @@ def plotGridData(fig,ax,data,dataName,x,y,t,symmetric,cmap,xLabel,yLabel,zLabel,
 
         quantity_title = '$n_e/n_c$'
 
-    elif args.dataName.endswith('Density_a1_ion') or args.dataName.endswith('carbon') or args.dataName.endswith('hydrogen'):
+    elif args.dataName.endswith('Density_a1_ion') or args.dataName.endswith('carbon') or args.dataName.endswith('proton'):
 
         quantity_title = '$n/n_c$'
 
@@ -1150,6 +1155,7 @@ def processDensity(density,x,y,densityName,subtract=False,frac=1.0,ne=None):
     Ny = yCC.shape[0]
     print('subtract',subtract)
     if subtract:
+        print(frac)
         expDensity = frac*np.outer(ne,np.ones(Ny))
 
         print('μ before: {:}'.format(np.mean(density)))
@@ -1165,6 +1171,7 @@ def plotDensity(fig,ax,data,x,y,t,densityName,subtract=False,frac=None,ne=None,*
     xLabel = r'$x$ $/\mu$m'
     yLabel = r'$y$ $/\mu$m'
     zLabel = r'$\delta n/n_0$'
+
 
     density,xCC,yCC = processDensity(data,x,y,densityName,subtract,frac,ne)
 
@@ -1199,6 +1206,7 @@ def processDensityFT(density,x,y,densityName,windowFunc,subtract=False,frac=1.0,
                                  frac=frac,ne=ne)
     xCC = 0.5*(x[1:] + x[:-1])
     yCC = 0.5*(y[1:] + y[:-1])
+    print('enter process density')
     densityFT,xwns,ywns = calcFT(density,xCC,yCC,windowFunc)
 
     wnNorm = srsUtils.omegaNIF/const.c
@@ -1211,6 +1219,8 @@ def plotDensityFT(fig,ax,density,x,y,t,densityName,subtract=False,frac=None,ne=N
     xLabel = r'$ck_x/\omega_0$'
     yLabel = r'$ck_y/\omega_0$'
     zLabel = r'$\delta n/n_0$'
+    
+#    print('lenghts',lex(x),len(y),len(density))
 
     densityFT,xwns,ywns = processDensityFT(density,x,y,densityName,windowFunc,subtract=subtract,frac=frac,ne=ne)
 
@@ -1409,7 +1419,7 @@ if __name__ == '__main__':
     parser.add_argument('--cropy',type=float,nargs=2)
     parser.add_argument('--minN',type=int,default=0)
     parser.add_argument('--maxN',type=int,default=-1)
-    parser.add_argument('--spatialX',type=float,nargs=2,default =[0,500])
+    parser.add_argument('--spatialX',type=float,nargs=2,default =[0,550])
     parser.add_argument('--spatialY',type=float,nargs=2,default =[-9,9])
 
     # Options controlling plot limits
@@ -1444,6 +1454,8 @@ if __name__ == '__main__':
     parser.add_argument('--IntervalInitial',type=int, default = 1)
     parser.add_argument('--IntervalFinal',type=int, default = 40)
 
+    parser.add_argument('--which_run',type = str)
+    parser.add_argument('--saving_to_mine',type = bool,default = False)
 
     args = parser.parse_args()
     
@@ -1617,6 +1629,7 @@ if __name__ == '__main__':
             maxX = x.max()
             minX = x.min()
         # Figure out what the user wanted to do with the data
+        print(args.dataName,'aifugaofgiou')
         if 'Field_' or 'Poynting_' in args.dataName:
             if args.animate:
                 if args.cache and plotArgs['cacheDir'] is None:
@@ -1653,7 +1666,7 @@ if __name__ == '__main__':
                                   ySkip=args.wltx_NySkip,kSkip=args.wltx_NkSkip,
                                   kMax=wltx_kMax,**plotArgs)
     
-        elif 'Number_Density' in args.dataName:
+        elif 'Derived_Number_Density' in args.dataName:
             print(' IO am plottingd')
             plotArgs['subtract'] = args.subtractDensity
             if args.subtractDensity:
@@ -1726,10 +1739,10 @@ if __name__ == '__main__':
             sdfFile = args.fName
             
             
-
+            
             grid = sdf.read(sdfFile).Grid_Grid.data
 
-            
+            print(files[i])    
             time_data =  sdf.read(files[i])
             time_snapshot = np.array(time_data.Header['time'] )/1e-12
             
@@ -1874,13 +1887,25 @@ if __name__ == '__main__':
             #if args.spatialX:
                 # print(data[index_xlims0:index_xlims1,:].shape)
                 data = data[index_xlims0:index_xlims1,:]
+                if i==1:
+                    print('metto data = data0')
+                    data_0 = data
             else:
                 data = data[index_xlims0:index_xlims1-1,:]
+                if i==1:
+                    data = data[index_xlims0:index_xlims1-1,:]
+                    data_0 = data
             if args.plotType == 'FTy' or args.plotType == 'normal' and args.spatialX:
                 maxX = x.max()
                 minX = x.min()
+                if i==1:
+                    data_0 = data
+
+            print(' args.dataName', args.dataName)
             # Figure out what the user wanted to do with the data
-            if 'Field_' or 'Poynting_' in args.dataName:
+            #if 'Field_' or 'Poynting_' in startswith(args.dataName.startswith('Electric_' or args.dataName.startswith('Magnetic_'):
+            if args.dataName.startswith('Electric_') or args.dataName.startswith('Magnetic_'):
+#                print('ma che sang e chaigsrgt')
                 if args.animate:
                     if args.cache and plotArgs['cacheDir'] is None:
                         plotArgs['cacheDir'] = os.path.join(args.fName,
@@ -1905,9 +1930,13 @@ if __name__ == '__main__':
                     elif args.plotType == 'env':
                         im=plotFieldEnv(fig,ax,data,x,y,t,args.dataName,**plotArgs)
                     elif args.plotType == 'FT':
-                        im=plotFieldFT(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,ne=ne,windowFunc=np.hanning,**plotArgs)
+
+                        if i>1:
+                            im=plotFieldFT(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,ne=ne,windowFunc=np.hanning,**plotArgs)
                     elif args.plotType == 'FTy':
-                        im=plotFieldFTy(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,ne=ne,windowFunc=np.hanning,**plotArgs)
+                        if i>1:
+
+                            im=plotFieldFTy(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,ne=ne,windowFunc=np.hanning,**plotArgs)
                     elif args.plotType == 'wltx':
                         im=plotFieldWltx(fig,ax,data,x,y,t,args.dataName,
                                   Te=args.temperature,ne=ne,
@@ -1915,7 +1944,9 @@ if __name__ == '__main__':
                                       ySkip=args.wltx_NySkip,kSkip=args.wltx_NkSkip,
                                       kMax=wltx_kMax,**plotArgs)
         
-            elif 'Number_Density' in args.dataName:
+#            elif 'Derived_Number_Density' in args.dataName:
+            else:
+                print('ma che sang e chaigsrgt')
                 print(' IO am plottingd')
                 plotArgs['subtract'] = args.subtractDensity
                 if args.subtractDensity:
@@ -1939,7 +1970,12 @@ if __name__ == '__main__':
                     elif args.plotType == 'FT':
                         im=plotDensityFT(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,windowFunc=np.hanning,**plotArgs)
                     elif args.plotType == 'FTy':
-                        im=plotDensityFTy(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,windowFunc=np.hanning,**plotArgs)
+                        print(i)
+                        if i> 1:
+                            print('qua')
+                            im=plotDensityFTy(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,windowFunc=np.hanning,**plotArgs)
+                        else:
+                            im=plotDensityFTy(fig,ax,data,x,y,t,args.dataName,Te=args.temperature,windowFunc=np.hanning,**plotArgs)
                     elif args.plotType == 'meanDiffY':
                         im=plotDensityMeanDiffY(fig,ax,data,x,y,t,args.dataName,grid=True,**plotArgs)
         
@@ -1956,5 +1992,12 @@ if __name__ == '__main__':
             else:
                 fig.tight_layout(pad=0,w_pad=0,h_pad=0)
                 print(args.plotType)
-                fig.savefig('./pics/'+args.output+args.plotType+'/'+args.output+'_'+str(int(time_snapshot*1e3))+'_fs_x_range_'+str(args.spatialX[0])+'_'+str(args.spatialX[1])+'_um.jpg',dpi=600,pad='tight')
-            del ne,grid
+                #fig.savefig(args.output+'_'+str(int(time_snapshot*1e3))+'_fs_x_range_'+str(args.spatialX[0])+'_'+str(args.spatialX[1])+'_um.jpg',dpi=600,pad='tight')
+#                fig.savefig(+args.output+'_.jpg',dpi=600,pad='tight')
+                if args.saving_to_mine == True:
+                    fig.savefig('/work/e689/e689/ruocco89/pioneer_project/2D/runs/'+args.which_run+'/pics/'+args.output+args.plotType+'/'+args.output+'_'+str(int(time_snapshot*1e3))+'_fs_x_'+str(args.spatialX[0])+'_'+str(args.spatialX[1])+'_um.jpg',dpi=600,pad='tight')
+                    plt.close()
+                else:
+                    fig.savefig('./pics/'+args.output+args.plotType+'/'+args.output+'_'+str(int(time_snapshot*1e3))+'_fs_x_'+str(args.spatialX[0])+'_'+str(args.spatialX[1])+'_um.jpg',dpi=600,pad='tight')
+                    plt.close()
+            
