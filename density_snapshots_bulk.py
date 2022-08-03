@@ -1422,14 +1422,10 @@ if __name__ == '__main__':
                         choices=['normal','env','FT','FTy','wltx','meanDiffY'],
                                             default='normal')
     parser.add_argument('-a','--animate',action='store_true')
-    parser.add_argument('--stdY',action='store_true')
     parser.add_argument('--subtractDensity',action='store_true')
     parser.add_argument('-l','--log',action='store_true')
 
     # Wavelet transform options
-    parser.add_argument('--wltx_NySkip',type=int,default=10)
-    parser.add_argument('--wltx_NkSkip',type=int,default=1)
-    parser.add_argument('--wltx_freqMult',type=float,default=12.0)
     parser.add_argument('--wltx_kMax',type=float)
 
     # Options controlling detailed choice of data
@@ -1441,10 +1437,10 @@ if __name__ == '__main__':
     parser.add_argument('--cropy',type=float,nargs=2)
     parser.add_argument('--minN',type=int,default=0)
     parser.add_argument('--maxN',type=int,default=-1)
-    parser.add_argument('--spatialX',type=float,nargs=2,default =[0,550])
+    parser.add_argument('--spatialX',type=float,nargs=2,default =[0,1950])
     parser.add_argument('--spatialY',type=float,nargs=2,default =[-9,9])
 
-    # Options controlling plot limits
+    # # Options controlling plot limits
     parser.add_argument('--minX',type=float)
     parser.add_argument('--maxX',type=float)
     parser.add_argument('--minY',type=float)
@@ -1452,40 +1448,36 @@ if __name__ == '__main__':
     parser.add_argument('--minF',type=float)
     parser.add_argument('--maxF',type=float)
 
-    # Options for specifying physical parameters needed for overlaying of e.g.
-    # dispersion relations.
+    # # Options for specifying physical parameters needed for overlaying of e.g.
+    # # dispersion relations.
     parser.add_argument('--densityRange',type=float,nargs=2) # 0.194580059689 0.260175683371
     parser.add_argument('--temperature',type=float)
     parser.add_argument('--densityFrac',type=float,default=1.0) # H = 0.183922829582, C = 0.136012861736
     parser.add_argument('--densityProfile',choices=['exp','calc'])
 
-    # Animation options
+    # # Animation options
     parser.add_argument('--cache',action='store_true')
     parser.add_argument('--useExistingCache',action='store_true')
     parser.add_argument('--cacheDir')
-    parser.add_argument('--parallelAnim',action='store_true')
 
-    # Options for controlling miscellaneous aspects of the plot
+    # # Options for controlling miscellaneous aspects of the plot
     parser.add_argument('--figSize',type=float,nargs=2)
     parser.add_argument('--fontSize',type=float)
     parser.add_argument('--noTitle',action='store_true')
     parser.add_argument('--noCBar',action='store_true')
     parser.add_argument('-o','--output',required=True)
     
-    parser.add_argument('--singleSnapshot',type = bool,default = False)
     parser.add_argument('--IntervalInitial',type=int, default = 1)
     parser.add_argument('--IntervalFinal',type=int, default = 40)
-    parser.add_argument('--saving_also_snapshot',type = bool,default = False)
+    # parser.add_argument('--saving_also_snapshot',type = bool,default = False)
     
 
     parser.add_argument('--which_run',type = str)
     parser.add_argument('--saving_to_mine',type = bool,default = False)
     
-    parser.add_argument('--dataLineouts',type = bool,default = False)
-    parser.add_argument('--kLimsDataLineouts',type=float,nargs=2,default =[-9,9])
 
-    ### Adding external lineouts for density
-    parser.add_argument('--densityMarkLineouts',type = bool,default = False)
+    # ### Adding external lineouts for density
+    # parser.add_argument('--densityMarkLineouts',type = bool,default = False)
     parser.add_argument('--densLim',type=float,nargs=2, default = None)
     parser.add_argument('--Lnc4',type=float, default = None)
     parser.add_argument('--initialDensitySim',type=float,default = .1)
@@ -1568,35 +1560,7 @@ if __name__ == '__main__':
         
         
         
-        if args.spatialX:
-            
-            xlims0,index_xlims0 = find_nearest(xOrig*1e6,xSpatialLimits[0])
-            xlims1,index_xlims1 = find_nearest(xOrig*1e6,xSpatialLimits[1]) 
-            x = xOrig[index_xlims0:index_xlims1]
-            data_2d = data[index_xlims0:index_xlims1,:]
-
-        else:
-            xlims0 = xOrig.min()*1e6
-            xlims1 = xOrig.max()*1e6
-            data_2d = data[0:len(xOrig),:]
-
-            x = xOrig
-            
     
-        if args.spatialY:
-            
-            ylims0,index_ylims0 = find_nearest(yOrig*1e6,ySpatialLimits[0])
-            ylims1,index_ylims1 = find_nearest(yOrig*1e6,ySpatialLimits[1]) 
-            y = yOrig[index_ylims0:index_ylims1]
-            data_2d = data_2d[:,index_ylims0:index_ylims1]
-
-        else:
-            ylims0 = yOrig.min()*1e6
-            ylims1 = xOrig.max()*1e6
-            data_2d = data[:,0:len(yOrig)]
-
-            y = yOrig
-            
 
     
 # =============================================================================
@@ -1628,44 +1592,87 @@ if __name__ == '__main__':
             if i ==0:
        
                 
+                
                 Ln = 1e6*(xOrig[-1]-xOrig[0])/math.log(args.densityRange[1]/args.densityRange[0])
     
-                xCC = 0.5*(x[1:] + x[:-1])
-            # ne = expDensity(xCC,args.densityRange[0],args.Lnc4)
+
             
-                print('PLEASE, CHECK IF YOUR INITIAL DENSITY IS ',args.initialDensitySim,'nc')
-                print(Ln)
+                print('PLEASE, CHECK IF YOUR args.initialDensitySim IS CONSITENT WITH YOUR LOWEST DENSITY IN SIM')
+                print('Density scale lenght at qc',Ln)
                 ne = initial_density_profile(args.initialDensitySim,xOrig,Ln)
         
         
-            
-        elif args.densityProfile == 'calc':
-            if args.animate:
-                initSnapFName = os.path.join(args.fName,'regular_0000.sdf')
-            else:
-                initSnapFName = os.path.join(os.path.dirname(args.fName),'regular_0000.sdf')
-            ne = sdf.read(initSnapFName).Derived_Number_Density_Electron.data
-            ne = cropArray(ne,_nCropx,_nCropy)
-            ne = np.mean(ne,axis=1)
-            ne = gaussian_filter1d(ne,sigma=10)
+   
+        # elif args.densityProfile == 'calc':
+        #     if args.animate:
+        #         initSnapFName = os.path.join(args.fName,'regular_0000.sdf')
+        #     else:
+        #         initSnapFName = os.path.join(os.path.dirname(args.fName),'regular_0000.sdf')
+        #     ne = sdf.read(initSnapFName).Derived_Number_Density_Electron.data
+        #     ne = cropArray(ne,_nCropx,_nCropy)
+        #     ne = np.mean(ne,axis=1)
+        #     ne = gaussian_filter1d(ne,sigma=10)
     
         if args.temperature:
             args.temperature = args.temperature*srsUtils.TkeV
     
-    
+
         # These are keyword arguments that get passed to the function that
         # ultimately plots everything (either plotGridData or animGridData)
         plotArgs = {'xLims':xLims,'yLims':yLims,'zLims':zLims,'log':args.log,
                     'noTitle':args.noTitle,'noCBar':args.noCBar}
+        
+        
+        if args.spatialX:
+            
+            
+            xlims0,index_xlims0 = find_nearest(xOrig*1e6,xSpatialLimits[0])
+            xlims1,index_xlims1 = find_nearest(xOrig*1e6,xSpatialLimits[1]) 
+            x = xOrig[index_xlims0:index_xlims1]
+            data_2d = data[index_xlims0:index_xlims1,:]
+            n_time = np.mean(data[index_xlims0:index_xlims1,:],axis=1)
+            if i ==0:
+                ne = ne[index_xlims0:index_xlims1]
+
+
+            
+            print('new x lims', x.min()*1e6,x.max()*1e6)
+            
+
+
+        else:
+            xlims0 = xOrig.min()*1e6
+            xlims1 = xOrig.max()*1e6
+            data_2d = data[0:len(xOrig),:]
+            n_time = np.mean(data,axis=1)
+
+
+            x = xOrig
+            
+    
+        if args.spatialY:
+            
+            ylims0,index_ylims0 = find_nearest(yOrig*1e6,ySpatialLimits[0])
+            ylims1,index_ylims1 = find_nearest(yOrig*1e6,ySpatialLimits[1]) 
+            y = yOrig[index_ylims0:index_ylims1]
+            data_2d = data_2d[:,index_ylims0:index_ylims1]
+
+        else:
+            ylims0 = yOrig.min()*1e6
+            ylims1 = xOrig.max()*1e6
+            data_2d = data[:,0:len(yOrig)]
+
+            y = yOrig
+            
         
 # =============================================================================
 #         y-averaged density vs x plots
 # =============================================================================
         
         if args.averaged_y_density_snapshots == True:
+        
             
             
-            n_time = np.mean(data,axis=1)
 
             if args.dataName.endswith('Electron'):              
                 delta_density = n_time/srsUtils.nCritNIF/ne-1.0
@@ -1677,7 +1684,7 @@ if __name__ == '__main__':
 
             
             plt.title('t ={:.3f}ps'.format(t/1e-12),**axis_font)
-            plt.plot(xOrig*1e6,delta_density)
+            plt.plot(x*1e6,delta_density)
             plt.xlabel('x ($\mu$m)',**axis_font)
             plt.tick_params(labelsize=15,length=10, width=1,direction='inout',labelcolor='black')
             # plt.legend(loc = 'best',prop={'size':12})
